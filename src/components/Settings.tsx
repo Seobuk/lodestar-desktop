@@ -3,6 +3,7 @@ import { ALLOWED_SERVERS, DEFAULT_SERVER, getMeta, setMeta } from "../lib/settin
 import { scheduleSync, syncState } from "../lib/sync";
 import { useVersion } from "../lib/store";
 import { fmtDateTime } from "../lib/format";
+import SttModels from "./SttModels";
 
 export default function Settings({ onClose }: { onClose: () => void }) {
   useVersion();
@@ -64,6 +65,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             </ul>
           )}
         </div>
+        <SttModels />
         <div className="btn-row">
           <button
             type="button"

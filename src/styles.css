@@ -455,6 +455,59 @@ textarea {
   font-weight: 600;
 }
 
+/* ----- 받아쓰기 모델 관리(설정) ----- */
+.stt-models {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.stt-models-head {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.stt-model-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.stt-model-row:last-of-type {
+  border-bottom: none;
+}
+.stt-model-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.stt-model-label {
+  font-weight: 600;
+  font-size: 13px;
+}
+.stt-model-note {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+.stt-model-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.stt-installed {
+  font-size: 12px;
+  color: #2e9e5b;
+  font-weight: 600;
+}
+.stt-progress {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: var(--accent);
+  min-width: 44px;
+  text-align: right;
+}
+
 /* ----- 녹음·받아쓰기 ----- */
 .rec-panel {
   border: 1px solid var(--line);
@@ -1090,7 +1143,9 @@ textarea {
   background: #fff;
   border-radius: 12px;
   padding: 20px 22px;
-  width: min(480px, 92vw);
+  width: min(520px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 .modal h2 {

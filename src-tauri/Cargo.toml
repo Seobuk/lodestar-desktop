@@ -16,15 +16,10 @@ tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-
-[target."cfg(windows)".dependencies]
-# 받아쓰기 — Windows 내장 음성 인식(WinRT SpeechRecognizer)
-windows = { version = "0.61", features = [
-  "Media_SpeechRecognition",
-  "Foundation",
-  "Foundation_Collections",
-  "Globalization",
-] }
+# 받아쓰기 — sherpa-onnx(오프라인 whisper + Silero VAD). prebuilt 정적 링크(배포 DLL 없음).
+sherpa-onnx = "1.13.4"
+# 모델 다운로드(스트리밍 → 파일, 진행률)
+ureq = "2.12"
 
 [lib]
 name = "lodestar_desktop_lib"

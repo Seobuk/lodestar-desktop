@@ -54,7 +54,7 @@ export async function listRecordings(
   );
 }
 
-export async function loadRecordingUrl(id: string): Promise<string> {
+export async function loadRecordingBlob(id: string): Promise<Blob> {
   const db = await getDb();
   const rows = await db.select<{ data: string; mime: string }[]>(
     "SELECT data, mime FROM recordings WHERE id = $1",
@@ -65,7 +65,11 @@ export async function loadRecordingUrl(id: string): Promise<string> {
   const bin = atob(r.data);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return URL.createObjectURL(new Blob([bytes], { type: r.mime }));
+  return new Blob([bytes], { type: r.mime });
+}
+
+export async function loadRecordingUrl(id: string): Promise<string> {
+  return URL.createObjectURL(await loadRecordingBlob(id));
 }
 
 export async function deleteRecording(id: string): Promise<void> {

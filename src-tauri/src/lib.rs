@@ -4,7 +4,15 @@ mod stt;
 pub fn run() {
     tauri::Builder::default()
         .manage(stt::SttState::default())
-        .invoke_handler(tauri::generate_handler![stt::stt_start, stt::stt_stop])
+        .invoke_handler(tauri::generate_handler![
+            stt::stt_realtime_start,
+            stt::stt_feed,
+            stt::stt_realtime_stop,
+            stt::stt_transcribe,
+            stt::stt_models_status,
+            stt::stt_download_model,
+            stt::stt_delete_model,
+        ])
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
