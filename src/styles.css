@@ -576,6 +576,47 @@ textarea {
   background: #eceef3;
   color: var(--ink);
 }
+.tbl-pick {
+  position: relative;
+  display: inline-flex;
+}
+.tbl-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tbl-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 15px);
+  gap: 3px;
+}
+.tbl-grid button {
+  width: 15px;
+  height: 15px;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--side-bg);
+}
+.tbl-grid button.on {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border-color: var(--accent);
+}
+.tbl-dim {
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+}
 .update-banner {
   margin: 0 10px 8px;
   padding: 6px 10px;

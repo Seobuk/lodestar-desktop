@@ -2,6 +2,72 @@ import { useLayoutEffect, useRef, useState } from "react";
 import MarkdownView from "./MarkdownView";
 import { uploadImage } from "../lib/api-image";
 
+/** cols × rows 마크다운 표(첫 행 = 헤더). */
+const tableMd = (cols: number, rows: number) => {
+  const row = (cells: string[]) => `| ${cells.join(" | ")} |`;
+  const lines = [
+    row(Array.from({ length: cols }, (_, i) => `제목${i + 1}`)),
+    row(Array.from({ length: cols }, () => "---")),
+    ...Array.from({ length: Math.max(0, rows - 1) }, () =>
+      row(Array.from({ length: cols }, () => "  ")),
+    ),
+  ];
+  return "\n" + lines.join("\n") + "\n";
+};
+
+/** 표 크기 그리드 피커 — 마우스를 올려 열×행을 고르고 클릭으로 삽입(웹과 동일 UX). */
+function TablePicker({ onPick }: { onPick: (cols: number, rows: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [dim, setDim] = useState<[number, number]>([0, 0]);
+  const COLS = 8;
+  const ROWS = 6;
+  const close = () => {
+    setOpen(false);
+    setDim([0, 0]);
+  };
+  return (
+    <span
+      className="tbl-pick"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={close}
+    >
+      <button
+        type="button"
+        title="표 삽입 — 마우스를 올려 크기(열×행)를 고르세요"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((v) => !v)}
+      >
+        ⊞
+      </button>
+      {open && (
+        <span className="tbl-pop">
+          <span className="tbl-grid">
+            {Array.from({ length: ROWS }).map((_, r) =>
+              Array.from({ length: COLS }).map((_, c) => (
+                <button
+                  key={`${r}-${c}`}
+                  type="button"
+                  aria-label={`${c + 1} 열 × ${r + 1} 행`}
+                  className={c < dim[0] && r < dim[1] ? "on" : ""}
+                  onMouseEnter={() => setDim([c + 1, r + 1])}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onPick(c + 1, r + 1);
+                    close();
+                  }}
+                />
+              )),
+            )}
+          </span>
+          <span className="tbl-dim">
+            {dim[0] > 0 ? `${dim[0]} 열 × ${dim[1]} 행` : "크기 선택"}
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 // 마크다운 본문 에디터 — 웹(MarkdownTextarea)과 같은 "편집 ↔ 미리보기 토글"에
 // 서식 도구모음(업노트식 — 문법을 대신 넣어준다), 스마트 리스트(Enter 마커 연속·
 // 빈 항목 탈출, Tab/Shift+Tab 들여쓰기), Ctrl+B/I/K 단축키, Ctrl+S 저장,
@@ -137,12 +203,6 @@ export default function Editor({
     { label: "—", title: "구분선", run: () => insertBlock("\n---\n") },
     { label: "🔗", title: "링크 (Ctrl+K)", run: linkTool },
     { label: "ƒx", title: "수식 (KaTeX, $…$)", run: () => wrap("$", "$", "E=mc^2") },
-    {
-      label: "⊞",
-      title: "표 삽입",
-      run: () =>
-        insertBlock("\n| 항목 | 값 |\n| --- | --- |\n|  |  |\n"),
-    },
   ];
 
   // ----- 키 입력 ---------------------------------------------------------
@@ -273,6 +333,7 @@ export default function Editor({
                 {t.label}
               </button>
             ))}
+            <TablePicker onPick={(c, r) => insertBlock(tableMd(c, r))} />
           </span>
         )}
         <span className="editor-hint">
