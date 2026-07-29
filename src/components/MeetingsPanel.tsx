@@ -8,9 +8,11 @@ import {
 } from "../lib/mutations";
 import { fmtDateTime } from "../lib/format";
 import { useDraft, clearDraft } from "../lib/useDraft";
+import { rekeyRecordings } from "../lib/recordings";
 import MarkdownView from "./MarkdownView";
 import Editor from "./Editor";
 import ConfirmButton from "./ConfirmButton";
+import RecorderPanel, { RecordingsList } from "./RecorderPanel";
 import type { MeetingRow, TaskNode } from "../lib/types";
 
 type Mode = { t: "list" } | { t: "read"; id: string } | { t: "edit"; id: string | null };
@@ -63,6 +65,9 @@ function MeetingEdit({
     },
   );
 
+  // 녹음 키 — 기존 회의록은 id, 새 회의록은 초안 키(저장 시 실제 id로 이전)
+  const recKey = meeting ? meeting.id : draftKey;
+
   const canSave = Boolean(title.trim());
   const doSave = async () => {
     if (!canSave) return;
@@ -73,6 +78,7 @@ function MeetingEdit({
       onDone(meeting.id);
     } else {
       const id = await addMeeting(projectId, data.title, body, data.taskId);
+      await rekeyRecordings(draftKey, id);
       onDone(id);
     }
   };
@@ -113,6 +119,16 @@ function MeetingEdit({
           ))}
         </select>
       </div>
+      <RecorderPanel
+        meetingKey={recKey}
+        onTranscript={(t) =>
+          setBody((prev) =>
+            prev && !prev.endsWith("\n") && !prev.endsWith(" ")
+              ? `${prev} ${t}`
+              : prev + t,
+          )
+        }
+      />
       <Editor
         value={body}
         onChange={setBody}
@@ -177,6 +193,7 @@ function MeetingRead({
           />
         </div>
       </header>
+      <RecordingsList meetingKey={meeting.id} />
       <MarkdownView src={meeting.body} />
     </article>
   );

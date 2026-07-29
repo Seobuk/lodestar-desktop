@@ -59,6 +59,16 @@ const SCHEMA = [
     createdAt TEXT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`,
+  // 회의록 녹음 — 이 PC 전용(동기화 안 함, 서버 무료 용량 보호). data = base64 webm.
+  `CREATE TABLE IF NOT EXISTS recordings (
+    id TEXT PRIMARY KEY,
+    meetingKey TEXT NOT NULL,
+    mime TEXT NOT NULL DEFAULT 'audio/webm',
+    durationSec INTEGER NOT NULL DEFAULT 0,
+    data TEXT NOT NULL,
+    createdAt TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_recordings_key ON recordings(meetingKey)`,
   `CREATE TABLE IF NOT EXISTS personal_cards (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
