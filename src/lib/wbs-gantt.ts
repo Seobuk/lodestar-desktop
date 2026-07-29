@@ -100,6 +100,9 @@ export function initWbsGantt(
     tasks: FlatTask[];
     deadlines?: DlItem[];
     onSync?: (tree: WNode[], deletedIds: string[]) => Promise<WNode[] | null>;
+    /** (데스크톱 추가) 미저장 편집 유무 통지 — true: 저장 대기 시작, false: 저장 완료.
+     *  pull 재로드가 편집 중인 트리를 덮지 않게 하는 신호. */
+    onDirtyChange?: (dirty: boolean) => void;
     // 읽기 전용(모든 프로젝트 개요): 편집 UI를 감추고, 행/막대 클릭 시 onOpen으로 라우팅.
     readOnly?: boolean;
     onOpen?: (node: WNode) => void;
@@ -450,13 +453,16 @@ export function initWbsGantt(
       .then((serverTree) => {
         if (serverTree) reconcileIds(DATA, serverTree);
         else deletedIds.push(...del); // 실패 — 삭제 내역을 되살려 다음 저장에서 재시도
+        opts.onDirtyChange?.(false);
       })
       .catch(() => {
         deletedIds.push(...del);
+        opts.onDirtyChange?.(false);
       });
   }
   function saveData() {
     if (opts.readOnly || !opts.onSync) return;
+    opts.onDirtyChange?.(true);
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(doSave, 500);
   }

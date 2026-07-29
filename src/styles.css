@@ -499,6 +499,78 @@ textarea {
   border: none;
 }
 
+/* ----- 검색·초안·업데이트 ----- */
+.side-search {
+  padding: 0 10px 8px;
+}
+.side-search input {
+  width: 100%;
+  padding: 5px 9px;
+  font-size: 12.5px;
+}
+.search-hit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.search-hit:hover {
+  background: #edeff4;
+}
+.search-hit .hit-kind {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+.search-hit .hit-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.draft-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff8dd;
+  border: 1px solid #e8d98a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+}
+.editor-hint {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  align-self: center;
+}
+.update-banner {
+  margin: 0 10px 8px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.statusbar .status-text {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font-size: inherit;
+}
+
 /* ----- 개인: 사이드바 항목 ----- */
 .side-personal {
   display: block;

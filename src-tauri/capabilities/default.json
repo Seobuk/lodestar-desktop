@@ -5,6 +5,8 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "process:default",
+    "updater:default",
     "sql:default",
     "sql:allow-load",
     "sql:allow-execute",

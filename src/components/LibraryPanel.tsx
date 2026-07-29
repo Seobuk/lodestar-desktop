@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useLiveQuery } from "../lib/store";
 import { getMeta, DEFAULT_SERVER } from "../lib/settings";
@@ -16,30 +16,30 @@ import type { LibCollectionRow, LibItemRow } from "../lib/types";
 // 개인 서재 — 데스크톱 v1은 카탈로그: 컬렉션별 탐색·검색·메타데이터/메모 편집·
 // 휴지통. 컬렉션 편집과 PDF 업로드는 웹 전용, PDF 열람은 온라인에서 브라우저로.
 
+const itemFields = (item: LibItemRow) => ({
+  title: item.title,
+  authors: item.authors ?? "",
+  year: item.year != null ? String(item.year) : "",
+  venue: item.venue ?? "",
+  doi: item.doi ?? "",
+  url: item.url ?? "",
+  tags: parseJsonArr<string>(item.tags).join(", "),
+  note: item.note ?? "",
+});
+
 function ItemDetail({ item }: { item: LibItemRow }) {
-  const [f, setF] = useState({
-    title: item.title,
-    authors: item.authors ?? "",
-    year: item.year != null ? String(item.year) : "",
-    venue: item.venue ?? "",
-    doi: item.doi ?? "",
-    url: item.url ?? "",
-    tags: parseJsonArr<string>(item.tags).join(", "),
-    note: item.note ?? "",
-  });
+  const [f, setF] = useState(itemFields(item));
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) =>
     setF({ ...f, [k]: e.target.value });
-  const orig = {
-    title: item.title,
-    authors: item.authors ?? "",
-    year: item.year != null ? String(item.year) : "",
-    venue: item.venue ?? "",
-    doi: item.doi ?? "",
-    url: item.url ?? "",
-    tags: parseJsonArr<string>(item.tags).join(", "),
-    note: item.note ?? "",
-  };
+  const orig = itemFields(item);
   const dirty = (Object.keys(f) as (keyof typeof f)[]).some((k) => f[k] !== orig[k]);
+
+  // pull(서지 자동채움 포함)이 행을 갱신했을 때: 편집 중이 아니면 최신 값으로 리셋.
+  // key 리마운트 방식은 타이핑 중 입력을 날리므로 쓰지 않는다.
+  useEffect(() => {
+    if (!dirty) setF(itemFields(item));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.updatedAt]);
 
   const save = async () => {
     const data: Record<string, unknown> = {};
@@ -134,7 +134,7 @@ function ItemDetail({ item }: { item: LibItemRow }) {
   );
 }
 
-export default function LibraryPanel() {
+export default function LibraryPanel({ openItemId }: { openItemId?: string }) {
   const collections = useLiveQuery(
     (db) =>
       db.select<LibCollectionRow[]>(
@@ -151,8 +151,14 @@ export default function LibraryPanel() {
   );
   const [colSel, setColSel] = useState<string>("all");
   const [q, setQ] = useState("");
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selId, setSelId] = useState<string | null>(openItemId ?? null);
   const [newInput, setNewInput] = useState("");
+  useEffect(() => {
+    if (openItemId) {
+      setColSel("all");
+      setSelId(openItemId);
+    }
+  }, [openItemId]);
 
   const filtered = (items ?? []).filter((it) => {
     if (colSel === "trash") {
@@ -288,7 +294,7 @@ export default function LibraryPanel() {
               ✕
             </button>
           </div>
-          <ItemDetail key={sel.id + String(sel.updatedAt)} item={sel} />
+          <ItemDetail key={sel.id} item={sel} />
         </aside>
       )}
     </div>

@@ -138,13 +138,15 @@ export async function syncTaskTree(
       for (const x of op.data.deletedIds ?? []) merged.add(x);
     }
   }
-  if (stale.length)
-    await db.execute(`DELETE FROM oplog WHERE seq IN (${stale.join(",")})`);
+  // 순서 중요: 새 op를 먼저 넣고 나서 이전 op를 지운다 — 그 사이 앱이 죽어도
+  // 최소한 하나는 남아 저장이 유실되지 않는다(둘 다 남으면 구→신 순 적용으로 수렴).
   await dispatch({
     entity: "task",
     action: "tree",
     data: { projectId, tree, deletedIds: [...merged] },
   });
+  if (stale.length)
+    await db.execute(`DELETE FROM oplog WHERE seq IN (${stale.join(",")})`);
   const n = await db.select<{ n: number }[]>("SELECT COUNT(*) n FROM oplog");
   syncState.pendingOps = n[0]?.n ?? 0;
   notify();
@@ -301,13 +303,21 @@ export async function updateLibItemFields(
   await dispatchUpdate("libitem", "library_items", id, data);
 }
 
-/** 휴지통 이동/복원 — 서버 updateItem의 trash/restore 액션 플래그 재사용. */
+/** 휴지통 이동/복원 — 서버 updateItem의 trash/restore 액션 플래그 재사용.
+ *  두 플래그를 상호 배타로 함께 실어, 큐 병합 시 마지막 액션만 남게 한다
+ *  (restore 뒤 trash가 병합되면 restore가 이겨 항목이 되살아나던 버그). */
 export async function trashLibItem(id: string): Promise<void> {
-  await dispatchUpdate("libitem", "library_items", id, { trash: true });
+  await dispatchUpdate("libitem", "library_items", id, {
+    trash: true,
+    restore: false,
+  });
 }
 
 export async function restoreLibItem(id: string): Promise<void> {
-  await dispatchUpdate("libitem", "library_items", id, { restore: true });
+  await dispatchUpdate("libitem", "library_items", id, {
+    restore: true,
+    trash: false,
+  });
 }
 
 export async function removeLibItem(id: string): Promise<void> {

@@ -37,6 +37,11 @@ function ProgressSlider({
           if (local !== null && local !== value) onCommit(local);
           setLocal(null);
         }}
+        onBlur={() => {
+          // 키보드(방향키) 조작은 pointerup이 없다 — 포커스가 떠날 때 커밋
+          if (local !== null && local !== value) onCommit(local);
+          setLocal(null);
+        }}
       />
       <span className="mono">{v}%</span>
     </label>
@@ -57,6 +62,8 @@ export default function TaskView({
   const [title, setTitle] = useState<string | null>(null);
   const [desc, setDesc] = useState<string | null>(null);
 
+  if (task === undefined)
+    return <div className="pane-empty">불러오는 중…</div>;
   if (!task || task.trashedAt)
     return (
       <div className="pane-empty">
@@ -145,6 +152,12 @@ export default function TaskView({
           onChange={setDesc}
           rows={12}
           placeholder="업무 설명 (마크다운)"
+          onSave={() => {
+            if (!descDirty) return;
+            void updateTaskFields(taskId, { description: descValue }).then(() =>
+              setDesc(null),
+            );
+          }}
         />
         <div className="btn-row">
           <button

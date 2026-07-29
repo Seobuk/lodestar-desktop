@@ -1,7 +1,7 @@
 {
   "name": "lodestar-desktop",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,10 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-http": "^2",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2",
     "@tauri-apps/plugin-sql": "^2",
+    "@tauri-apps/plugin-updater": "^2",
+    "pretendard": "^1.3.9",
     "@vscode/markdown-it-katex": "^1",
     "highlight.js": "^11",
     "katex": "^0.16",

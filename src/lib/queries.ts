@@ -75,6 +75,31 @@ export async function getMeetingRow(
   return r[0] ?? null;
 }
 
+export type SearchHit = {
+  kind: "project" | "task" | "meeting" | "note" | "post" | "libitem";
+  id: string;
+  title: string;
+  projectId: string | null;
+};
+
+/** 전역 검색 — 로컬 미러 전체를 LIKE로 훑는다(팀 규모 데이터라 즉답). */
+export async function searchAll(
+  db: Database,
+  q: string,
+): Promise<SearchHit[]> {
+  const like = `%${q}%`;
+  return db.select<SearchHit[]>(
+    `SELECT 'project' AS kind, id, name AS title, NULL AS projectId FROM projects WHERE status = 'active' AND name LIKE $1
+     UNION ALL SELECT 'task', id, title, projectId FROM tasks WHERE trashedAt IS NULL AND (title LIKE $1 OR description LIKE $1)
+     UNION ALL SELECT 'meeting', id, title, projectId FROM meetings WHERE title LIKE $1 OR body LIKE $1
+     UNION ALL SELECT 'note', id, CASE WHEN title != '' THEN title ELSE substr(body, 1, 40) END, NULL FROM personal_notes WHERE title LIKE $1 OR body LIKE $1
+     UNION ALL SELECT 'post', id, title, NULL FROM personal_posts WHERE title LIKE $1 OR body LIKE $1
+     UNION ALL SELECT 'libitem', id, title, NULL FROM library_items WHERE deletedAt IS NULL AND (title LIKE $1 OR authors LIKE $1 OR note LIKE $1)
+     LIMIT 40`,
+    [like],
+  );
+}
+
 export async function listDeadlines(
   db: Database,
   scopeType: "project" | "task",

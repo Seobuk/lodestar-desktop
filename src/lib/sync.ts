@@ -1,23 +1,23 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import type Database from "@tauri-apps/plugin-sql";
 import { getDb } from "./db";
-import { notify } from "./store";
+import { notify, pauseQueries, resumeQueries } from "./store";
 import { getMeta, setMeta, DEFAULT_SERVER } from "./settings";
 import { applyOpLocal } from "./localops";
 import type { SyncOp } from "./types";
 
 // 동기화 엔진 — 설계는 "push 후 전체 pull":
-//  1) push: 오프라인 작업큐(oplog)를 순서대로 서버에 replay. 서버 op는 멱등이라
-//     네트워크가 중간에 끊겨도 다음 시도에 안전하게 재전송된다. 서버가 ok:false로
-//     거절한 op(검증 실패·충돌 보호장치)는 큐에서 빼고 오류만 표시한다.
+//  1) push: 오프라인 작업큐(oplog)를 순서대로 서버에 replay. 전송한 행은
+//     `seq AND op 원문` 일치 조건으로만 지운다 — 전송 중 dispatchUpdate가 같은
+//     행에 병합한 편집(op 텍스트가 바뀜)이 seq 삭제로 유실되지 않게(리뷰 critical).
+//     서버가 ok:false로 거절한 op는 큐에서 빼고 오류만 표시. 403은 권한 없음 —
+//     해당 영역 op 폐기 + 탭 숨김. 401은 토큰 무효 — 큐 보존, 상태 표시.
 //  2) pull: 전체 상태를 받아 로컬 테이블을 통째로 교체(커서·톰스톤 없음).
 //     ⚠️ BEGIN/COMMIT 금지 — tauri plugin-sql은 연결 풀이라 DB가 잠긴다(실측).
+//     교체 동안 useLiveQuery를 일시정지해 반쯤 빈 테이블을 읽지 않게 한다.
 //  3) pull 도중 새로 쌓인 로컬 op를 다시 로컬 적용.
-// 충돌: 내용성 엔티티(프로젝트 설명·회의록·개인 글·메모·서재)는 base(마지막 pull의
-// updatedAt)를 실어 보내 서버가 더 새로우면 덮지 않고 경고(+회의록·글·메모는
-// '(오프라인 사본)'으로 보존). 그 외(업무·마감·카드)는 last-write-wins.
-// 엔드포인트 2개: 프로젝트(project-sync) + 개인(personal-sync, hasPersonalPage
-// 없으면 403 → 개인 탭 숨김·개인 op 폐기).
+// 충돌: 내용성 엔티티는 base(마지막 pull의 updatedAt)를 실어 보내고, push 성공
+// 결과의 updatedAt으로 로컬 행·잔여 큐의 base를 갱신해 자기 편집 오탐을 막는다.
 
 export type SyncStatus =
   | "idle"
@@ -34,7 +34,27 @@ export const syncState: {
   errors: string[];
 } = { status: "idle", lastSyncAt: null, pendingOps: 0, errors: [] };
 
+/** pull이 로컬을 교체할 때마다 증가 — 간트처럼 자체 상태를 소유한 화면이
+ *  "깨끗할 때만" 다시 로드하는 신호로 쓴다. */
+export const pullState = { seq: 0 };
+
 const PERSONAL_ENTITIES = new Set(["card", "note", "post", "libitem"]);
+
+const TABLE_OF: Record<string, string> = {
+  project: "projects",
+  task: "tasks",
+  meeting: "meetings",
+  deadline: "deadline_items",
+  card: "personal_cards",
+  note: "personal_notes",
+  post: "personal_posts",
+  libitem: "library_items",
+};
+
+/** 토큰 무효(401) — 오프라인과 구분해 큐를 보존한 채 재발급 안내를 띄운다. */
+class AuthError extends Error {}
+
+const FETCH_TIMEOUT = 45_000; // 행 걸린 요청이 syncing 플래그를 영원히 잡지 않게
 
 /** 모든 로컬 변경의 단일 입구: 로컬 적용 → 큐 적재 → UI 갱신 → 동기화 예약. */
 export async function dispatch(op: SyncOp): Promise<void> {
@@ -97,35 +117,74 @@ export async function syncNow(): Promise<void> {
       if (pers.length) await pushBatch(db, persUrl, token, pers, true);
     }
 
-    // 2) pull — 전체 상태 교체
+    // 2) pull — 전체 상태 교체. 403은 그 영역만 숨기고 계속(개인 전용 사용자도
+    //    앱이 동작해야 한다 — 리뷰 high), 401은 토큰 무효.
     const auth = { Authorization: `Bearer ${token}` };
-    const res = await fetch(projUrl, { headers: auth });
-    if (!res.ok) throw new Error(`pull HTTP ${res.status}`);
-    await replaceProject(db, (await res.json()) as ProjectSnapshot);
+    const res = await fetch(projUrl, {
+      headers: auth,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
+    });
+    let projSnap: ProjectSnapshot | null = null;
+    if (res.status === 403) {
+      await setMeta("projectEnabled", "0");
+    } else if (res.status === 401) {
+      throw new AuthError();
+    } else if (res.ok) {
+      projSnap = (await res.json()) as ProjectSnapshot;
+      await setMeta("projectEnabled", "1");
+    } else {
+      throw new Error(`pull HTTP ${res.status}`);
+    }
 
-    const pres = await fetch(persUrl, { headers: auth });
+    const pres = await fetch(persUrl, {
+      headers: auth,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
+    });
+    let persSnap: PersonalSnapshot | null = null;
     if (pres.status === 403) {
-      await setMeta("personalEnabled", "0"); // 권한 없음 — 개인 탭 숨김
+      await setMeta("personalEnabled", "0");
+    } else if (pres.status === 401) {
+      throw new AuthError();
     } else if (pres.ok) {
-      await replacePersonal(db, (await pres.json()) as PersonalSnapshot);
+      persSnap = (await pres.json()) as PersonalSnapshot;
       await setMeta("personalEnabled", "1");
     } else {
       throw new Error(`personal pull HTTP ${pres.status}`);
     }
 
-    // 3) pull 동안 쌓인 로컬 op 재적용
-    const rest = await db.select<{ op: string }[]>(
-      "SELECT op FROM oplog ORDER BY seq",
-    );
-    for (const r of rest) await applyOpLocal(JSON.parse(r.op) as SyncOp);
+    // 교체 + 잔여 op 재적용 동안 화면 재조회를 멈춰 반쯤 빈 테이블을 읽지 않게.
+    pauseQueries();
+    try {
+      if (projSnap) await replaceProject(db, projSnap);
+      if (persSnap) await replacePersonal(db, persSnap);
+      const rest = await db.select<{ op: string }[]>(
+        "SELECT op FROM oplog ORDER BY seq",
+      );
+      for (const r of rest) await applyOpLocal(JSON.parse(r.op) as SyncOp);
+    } finally {
+      resumeQueries();
+    }
+    pullState.seq += 1;
 
     syncState.lastSyncAt = new Date().toISOString();
     await setMeta("lastSyncAt", syncState.lastSyncAt);
     syncState.status = syncState.errors.length ? "error" : "ok";
   } catch (e) {
-    // 네트워크·서버 오류 — 큐를 보존한 채 다음 주기에 재시도(멱등이라 안전)
-    console.warn("sync 실패:", e);
-    syncState.status = "offline";
+    if (e instanceof AuthError) {
+      syncState.status = "unconfigured";
+      syncState.errors.push(
+        "API 토큰이 더 이상 유효하지 않습니다 — 로드스타 /token에서 재발급해 설정에 넣어주세요.",
+      );
+    } else {
+      // 네트워크·서버 오류 — 큐를 보존한 채 다음 주기에 재시도(멱등이라 안전)
+      console.warn("sync 실패:", e);
+      syncState.status = "offline";
+      const msg = String(e);
+      if (msg.includes("not allowed") || msg.includes("scope"))
+        syncState.errors.push(
+          "서버 주소가 이 빌드의 허용 목록에 없습니다 — 설정에서 기본 주소를 사용하세요.",
+        );
+    }
   } finally {
     try {
       const db = await getDb();
@@ -145,7 +204,13 @@ export async function syncNow(): Promise<void> {
   }
 }
 
-/** 한 배치를 한 엔드포인트로 push하고 그 seq들만 큐에서 지운다. */
+type PushResult = {
+  ok: boolean;
+  error?: string;
+  updatedAt?: string;
+};
+
+/** 한 배치를 한 엔드포인트로 push하고 결과를 반영한다. */
 async function pushBatch(
   db: Database,
   url: string,
@@ -160,24 +225,64 @@ async function pushBatch(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ ops: rows.map((r) => JSON.parse(r.op)) }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT),
   });
-  const seqs = rows.map((r) => r.seq).join(",");
-  if (personal && res.status === 403) {
-    // 개인 페이지 권한 없음 — 해당 op 폐기(영원히 안 될 op가 큐를 막지 않게)
-    await setMeta("personalEnabled", "0");
+  if (res.status === 401) throw new AuthError();
+  if (res.status === 403) {
+    // 권한 없음 — 이 영역 op는 영원히 안 되므로 폐기하고 해당 탭을 숨긴다.
+    await setMeta(personal ? "personalEnabled" : "projectEnabled", "0");
     syncState.errors.push(
-      "개인 페이지 권한이 없어 개인 데이터 변경을 보내지 못했습니다.",
+      personal
+        ? "개인 페이지 권한이 없어 개인 데이터 변경을 보내지 못했습니다."
+        : "프로젝트 권한이 없어 프로젝트 변경을 보내지 못했습니다.",
     );
-    await db.execute(`DELETE FROM oplog WHERE seq IN (${seqs})`);
+    await db.execute(
+      `DELETE FROM oplog WHERE seq IN (${rows.map((r) => r.seq).join(",")})`,
+    );
     return;
   }
   if (!res.ok) throw new Error(`push HTTP ${res.status}`);
-  const out = (await res.json()) as {
-    results: ({ ok: true } | { ok: false; error: string })[];
-  };
-  for (const r of out.results) if (!r.ok) syncState.errors.push(r.error);
-  // 실패 op도 큐에서 뺀다 — 오류는 상태줄·설정에 표시.
-  await db.execute(`DELETE FROM oplog WHERE seq IN (${seqs})`);
+  const out = (await res.json()) as { results: PushResult[] };
+
+  // 전송한 원문 그대로일 때만 삭제 — fetch 대기 중 병합돼 내용이 바뀐 행은
+  // 살아남아 다음 루프에서 재전송된다(update는 멱등·base는 아래에서 갱신).
+  for (const r of rows)
+    await db.execute("DELETE FROM oplog WHERE seq = $1 AND op = $2", [
+      r.seq,
+      r.op,
+    ]);
+
+  // 결과 반영: 오류 수집 + update 성공의 새 updatedAt으로 로컬 행과 잔여 큐의
+  // base를 갱신(자기 push 직후 stale base 충돌 오탐 방지 — 리뷰 high).
+  const baseFixes: { entity: string; id: string; updatedAt: string }[] = [];
+  out.results.forEach((r, i) => {
+    if (!r.ok) {
+      if (r.error) syncState.errors.push(r.error);
+      return;
+    }
+    const op = JSON.parse(rows[i]?.op ?? "{}") as SyncOp;
+    if (r.updatedAt && op.action === "update" && op.id && TABLE_OF[op.entity])
+      baseFixes.push({ entity: op.entity, id: op.id, updatedAt: r.updatedAt });
+  });
+  for (const f of baseFixes) {
+    await db.execute(
+      `UPDATE ${TABLE_OF[f.entity]} SET updatedAt = $1 WHERE id = $2`,
+      [f.updatedAt, f.id],
+    );
+    const qrows = await db.select<{ seq: number; op: string }[]>(
+      "SELECT seq, op FROM oplog",
+    );
+    for (const qr of qrows) {
+      const q = JSON.parse(qr.op) as SyncOp;
+      if (q.entity === f.entity && q.id === f.id && q.action === "update") {
+        q.base = f.updatedAt;
+        await db.execute("UPDATE oplog SET op = $1 WHERE seq = $2", [
+          JSON.stringify(q),
+          qr.seq,
+        ]);
+      }
+    }
+  }
 }
 
 let autoStarted = false;

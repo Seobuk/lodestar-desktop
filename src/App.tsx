@@ -44,7 +44,11 @@ export default function App() {
       />
       <main className="main">
         {selection?.type === "project" && (
-          <ProjectView key={selection.id} projectId={selection.id} />
+          <ProjectView
+            key={selection.id}
+            projectId={selection.id}
+            initialMeetingId={selection.meetingId}
+          />
         )}
         {selection?.type === "task" && (
           <TaskView
@@ -54,7 +58,14 @@ export default function App() {
             onSelect={setSelection}
           />
         )}
-        {selection?.type === "personal" && <PersonalView />}
+        {selection?.type === "personal" && (
+          <PersonalView
+            initialTab={selection.tab}
+            openNoteId={selection.noteId}
+            openPostId={selection.postId}
+            openLibItemId={selection.libItemId}
+          />
+        )}
         {!selection && <Empty onSettings={() => setSettingsOpen(true)} />}
       </main>
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}

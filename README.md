@@ -29,6 +29,20 @@ npm run tauri build    # 설치본 빌드 (NSIS, src-tauri/target/release/bundle
 
 요구: Node 20+, Rust(rustup), VS 2022 Build Tools(C++), WebView2 런타임(Win11 기본).
 
+## 릴리즈(자동 업데이트)
+
+앱이 시작 시 GitHub Releases의 `latest.json`을 확인해 새 버전 배너를 띄운다
+(tauri-plugin-updater, 설치는 사용자가 누를 때만). 새 버전 배포 절차:
+
+1. `package.json`·`src-tauri/tauri.conf.json` 버전 올리기
+2. 서명키를 env로 주고 빌드 — `TAURI_SIGNING_PRIVATE_KEY_PATH=~/.tauri/lodestar-updater.key`
+   (비밀번호 없음). `createUpdaterArtifacts`가 setup.exe와 `.sig`를 만든다.
+3. `latest.json` 작성(version·pub_date·platforms.windows-x86_64 {signature=.sig 내용,
+   url=릴리즈 에셋 URL}) 후 `gh release create vX.Y.Z setup.exe latest.json` 업로드.
+
+⚠️ 서명 개인키는 저장소 밖 `~/.tauri/lodestar-updater.key` — 분실하면 기존 설치본에
+업데이트를 배포할 수 없다.
+
 ## 구조
 
 - `src/lib/db.ts` — 로컬 SQLite 스키마(서버 모델의 부분집합 미러)

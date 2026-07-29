@@ -1,11 +1,42 @@
 import { useState } from "react";
 import { useLiveQuery, useVersion } from "../lib/store";
 import { getMeta } from "../lib/settings";
-import { listProjects, taskTree } from "../lib/queries";
+import { listProjects, searchAll, taskTree, type SearchHit } from "../lib/queries";
 import { addProject, addTask, trashTask } from "../lib/mutations";
 import { scheduleSync, syncState, type SyncStatus } from "../lib/sync";
 import ConfirmButton from "./ConfirmButton";
+import UpdateBanner from "./UpdateBanner";
 import type { ProjectRow, Selection, TaskNode } from "../lib/types";
+
+const HIT_LABEL: Record<SearchHit["kind"], string> = {
+  project: "프로젝트",
+  task: "업무",
+  meeting: "회의록",
+  note: "메모",
+  post: "글",
+  libitem: "서재",
+};
+
+function hitToSelection(hit: SearchHit): Selection | null {
+  switch (hit.kind) {
+    case "project":
+      return { type: "project", id: hit.id };
+    case "task":
+      return hit.projectId
+        ? { type: "task", id: hit.id, projectId: hit.projectId }
+        : null;
+    case "meeting":
+      return hit.projectId
+        ? { type: "project", id: hit.projectId, meetingId: hit.id }
+        : null;
+    case "note":
+      return { type: "personal", tab: "notes", noteId: hit.id };
+    case "post":
+      return { type: "personal", tab: "board", postId: hit.id };
+    case "libitem":
+      return { type: "personal", tab: "library", libItemId: hit.id };
+  }
+}
 
 function SideTask({
   node,
@@ -203,10 +234,16 @@ function StatusBar({ onSettings }: { onSettings: () => void }) {
   return (
     <div className="statusbar">
       <span className={`dot ${s.status}`} />
-      <span className="status-text">
+      <button
+        type="button"
+        className="status-text"
+        title="동기화 상태·오류 상세 보기"
+        onClick={onSettings}
+      >
         {STATUS_LABEL[s.status]}
         {s.pendingOps > 0 && ` · 대기 ${s.pendingOps}`}
-      </span>
+        {s.errors.length > 0 && ` · 오류 ${s.errors.length}`}
+      </button>
       <button
         type="button"
         title="지금 동기화"
@@ -235,14 +272,59 @@ export default function Sidebar({
     () => getMeta("personalEnabled").then((v) => v !== "0"),
     [],
   );
+  const projectEnabled = useLiveQuery(
+    () => getMeta("projectEnabled").then((v) => v !== "0"),
+    [],
+  );
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
+  const [q, setQ] = useState("");
+  const searching = q.trim().length >= 2;
+  const hits = useLiveQuery(
+    (db) => (searching ? searchAll(db, q.trim()) : Promise.resolve(null)),
+    [q],
+  );
 
   return (
     <aside className="side">
       <button type="button" className="brand" onClick={() => onSelect(null)}>
         Lodestar
       </button>
+      <UpdateBanner />
+      <div className="side-search">
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="검색 (제목·본문)"
+        />
+      </div>
+      {searching ? (
+        <div className="side-scroll">
+          {(hits ?? []).length === 0 && (
+            <p className="empty" style={{ padding: "4px 10px" }}>
+              결과 없음
+            </p>
+          )}
+          {(hits ?? []).map((h) => (
+            <button
+              type="button"
+              key={h.kind + h.id}
+              className="search-hit"
+              onClick={() => {
+                const sel = hitToSelection(h);
+                if (sel) {
+                  onSelect(sel);
+                  setQ("");
+                }
+              }}
+            >
+              <span className="hit-kind">{HIT_LABEL[h.kind]}</span>
+              <span className="hit-title">{h.title}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
       <div className="side-scroll">
         {personalEnabled !== false && (
           <button
@@ -253,15 +335,17 @@ export default function Sidebar({
             👤 개인 페이지
           </button>
         )}
-        {projects?.map((p) => (
-          <SideProject
-            key={p.id}
-            project={p}
-            selection={selection}
-            onSelect={onSelect}
-          />
-        ))}
-        {adding ? (
+        {projectEnabled !== false &&
+          projects?.map((p) => (
+            <SideProject
+              key={p.id}
+              project={p}
+              selection={selection}
+              onSelect={onSelect}
+            />
+          ))}
+        {projectEnabled !== false &&
+        (adding ? (
           <form
             className="side-add"
             onSubmit={async (e) => {
@@ -292,8 +376,9 @@ export default function Sidebar({
           >
             + 새 프로젝트
           </button>
-        )}
+        ))}
       </div>
+      )}
       <StatusBar onSettings={onSettings} />
     </aside>
   );

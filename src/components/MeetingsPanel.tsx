@@ -7,6 +7,7 @@ import {
   updateMeetingFields,
 } from "../lib/mutations";
 import { fmtDateTime } from "../lib/format";
+import { useDraft, clearDraft } from "../lib/useDraft";
 import MarkdownView from "./MarkdownView";
 import Editor from "./Editor";
 import ConfirmButton from "./ConfirmButton";
@@ -49,8 +50,51 @@ function MeetingEdit({
   const tasks = useLiveQuery((db) => taskTree(db, projectId), [projectId]);
   const flat = useMemo(() => flatten(tasks ?? []), [tasks]);
 
+  // 저장 없이 떠나도 글이 안 날아가게 초안 자동보관 + 재진입 시 복원
+  const draftKey = meeting ? `meeting:${meeting.id}` : `meeting:new:${projectId}`;
+  const { restored, discard } = useDraft(
+    draftKey,
+    { title, body, taskId },
+    Boolean(title.trim() || body.trim()),
+    (v) => {
+      setTitle(v.title ?? "");
+      setBody(v.body ?? "");
+      setTaskId(v.taskId ?? "");
+    },
+  );
+
+  const canSave = Boolean(title.trim());
+  const doSave = async () => {
+    if (!canSave) return;
+    const data = { title: title.trim(), body, taskId: taskId || null };
+    await clearDraft(draftKey);
+    if (meeting) {
+      await updateMeetingFields(meeting.id, data);
+      onDone(meeting.id);
+    } else {
+      const id = await addMeeting(projectId, data.title, body, data.taskId);
+      onDone(id);
+    }
+  };
+
   return (
     <div className="meeting-edit">
+      {restored && (
+        <div className="draft-banner">
+          저장 안 된 초안을 복원했습니다.
+          <button
+            type="button"
+            onClick={() => {
+              discard();
+              setTitle(meeting?.title ?? "");
+              setBody(meeting?.body ?? "");
+              setTaskId(meeting?.taskId ?? "");
+            }}
+          >
+            초안 버리기
+          </button>
+        </div>
+      )}
       <div className="meeting-edit-head">
         <input
           type="text"
@@ -69,26 +113,28 @@ function MeetingEdit({
           ))}
         </select>
       </div>
-      <Editor value={body} onChange={setBody} placeholder="회의 내용 (마크다운)" />
+      <Editor
+        value={body}
+        onChange={setBody}
+        placeholder="회의 내용 (마크다운)"
+        onSave={() => void doSave()}
+      />
       <div className="btn-row">
         <button
           type="button"
           className="primary"
-          disabled={!title.trim()}
-          onClick={async () => {
-            const data = { title: title.trim(), body, taskId: taskId || null };
-            if (meeting) {
-              await updateMeetingFields(meeting.id, data);
-              onDone(meeting.id);
-            } else {
-              const id = await addMeeting(projectId, data.title, body, data.taskId);
-              onDone(id);
-            }
-          }}
+          disabled={!canSave}
+          onClick={() => void doSave()}
         >
           저장
         </button>
-        <button type="button" onClick={onCancel}>
+        <button
+          type="button"
+          onClick={() => {
+            void clearDraft(draftKey);
+            onCancel();
+          }}
+        >
           취소
         </button>
       </div>
@@ -106,7 +152,10 @@ function MeetingRead({
   onDeleted: () => void;
 }) {
   const meeting = useLiveQuery((db) => getMeetingRow(db, id), [id]);
-  if (!meeting) return <p className="empty">회의록을 찾을 수 없습니다.</p>;
+  if (meeting === undefined)
+    return <p className="empty">불러오는 중…</p>;
+  if (meeting === null)
+    return <p className="empty">회의록을 찾을 수 없습니다.</p>;
   return (
     <article className="meeting-read">
       <header>
@@ -173,11 +222,16 @@ export default function MeetingsPanel({
     );
 
   if (mode.t === "edit") {
+    // 목록이 아직 로드 전이면 기존 회의록 편집이 '새 글'로 열려 본문을 빈 값으로
+    // 덮을 수 있다(리뷰) — 로드 완료까지 대기.
+    if (mode.id && meetings === undefined)
+      return <p className="empty">불러오는 중…</p>;
     const current = mode.id
       ? (meetings?.find((m) => m.id === mode.id) ?? null)
       : null;
     return (
       <MeetingEdit
+        key={current?.id ?? "new"}
         projectId={projectId}
         meeting={current}
         onDone={(id) => setMode({ t: "read", id })}

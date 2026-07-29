@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DEFAULT_SERVER, getMeta, setMeta } from "../lib/settings";
+import { ALLOWED_SERVERS, DEFAULT_SERVER, getMeta, setMeta } from "../lib/settings";
 import { scheduleSync, syncState } from "../lib/sync";
 import { useVersion } from "../lib/store";
 import { fmtDateTime } from "../lib/format";
@@ -8,6 +8,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   useVersion();
   const [url, setUrl] = useState(DEFAULT_SERVER);
   const [token, setToken] = useState("");
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -68,7 +69,15 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             type="button"
             className="primary"
             onClick={async () => {
-              await setMeta("serverUrl", url.trim() || DEFAULT_SERVER);
+              const normalized = (url.trim() || DEFAULT_SERVER).replace(/\/+$/, "");
+              // 빌드 타임 http 스코프 밖 주소는 요청이 거부돼 영원한 '오프라인'이 된다.
+              if (!ALLOWED_SERVERS.includes(normalized)) {
+                setErr(
+                  `이 빌드는 다음 서버만 허용합니다: ${ALLOWED_SERVERS.join(", ")}`,
+                );
+                return;
+              }
+              await setMeta("serverUrl", normalized);
               await setMeta("token", token.trim());
               scheduleSync(0);
               onClose();
@@ -76,6 +85,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           >
             저장 후 동기화
           </button>
+          {err && <span className="sync-errors">{err}</span>}
           <button type="button" onClick={onClose}>
             닫기
           </button>

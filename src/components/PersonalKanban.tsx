@@ -181,6 +181,7 @@ export default function PersonalKanban() {
                 }
                 draggable
                 onDragStart={() => setDragId(c.id)}
+                onDragEnd={() => setDragId(null)}
                 onClick={() => setEditingId(c.id)}
               >
                 <span className="pk-title">{c.title}</span>

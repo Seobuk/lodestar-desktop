@@ -74,9 +74,15 @@ export type SyncOp = {
 };
 
 export type Selection =
-  | { type: "project"; id: string }
+  | { type: "project"; id: string; meetingId?: string }
   | { type: "task"; id: string; projectId: string }
-  | { type: "personal" };
+  | {
+      type: "personal";
+      tab?: "kanban" | "notes" | "board" | "library";
+      noteId?: string;
+      postId?: string;
+      libItemId?: string;
+    };
 
 // ----- 개인 페이지 로컬 행 -----
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "../lib/store";
 import { getProjectRow, listMeetings } from "../lib/queries";
 import { updateProjectFields } from "../lib/mutations";
@@ -60,19 +60,21 @@ function InfoTab({ project }: { project: ProjectRow }) {
   const [desc, setDesc] = useState<string | null>(null);
   const value = desc ?? project.description;
   const dirty = desc !== null && desc !== project.description;
+  const save = async () => {
+    if (!dirty) return;
+    await updateProjectFields(project.id, { description: value });
+    setDesc(null);
+  };
   return (
     <div className="info-tab">
-      <Editor value={value} onChange={setDesc} placeholder="프로젝트 설명 (마크다운)" />
+      <Editor
+        value={value}
+        onChange={setDesc}
+        placeholder="프로젝트 설명 (마크다운)"
+        onSave={() => void save()}
+      />
       <div className="btn-row">
-        <button
-          type="button"
-          className="primary"
-          disabled={!dirty}
-          onClick={async () => {
-            await updateProjectFields(project.id, { description: value });
-            setDesc(null);
-          }}
-        >
+        <button type="button" className="primary" disabled={!dirty} onClick={() => void save()}>
           저장
         </button>
       </div>
@@ -80,13 +82,38 @@ function InfoTab({ project }: { project: ProjectRow }) {
   );
 }
 
-export default function ProjectView({ projectId }: { projectId: string }) {
+export default function ProjectView({
+  projectId,
+  initialMeetingId,
+}: {
+  projectId: string;
+  /** 전역 검색에서 회의록을 골랐을 때 — 회의록 탭을 열고 해당 노트를 펼친다. */
+  initialMeetingId?: string | null;
+}) {
   const project = useLiveQuery((db) => getProjectRow(db, projectId), [projectId]);
   const meetings = useLiveQuery((db) => listMeetings(db, projectId), [projectId]);
-  const [tab, setTab] = useState<"dash" | "gantt" | "meetings" | "info">("dash");
-  const [openMeetingId, setOpenMeetingId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"dash" | "gantt" | "meetings" | "info">(
+    initialMeetingId ? "meetings" : "dash",
+  );
+  const [openMeetingId, setOpenMeetingId] = useState<string | null>(
+    initialMeetingId ?? null,
+  );
 
-  if (!project) return <div className="pane-empty">불러오는 중…</div>;
+  useEffect(() => {
+    if (initialMeetingId) {
+      setTab("meetings");
+      setOpenMeetingId(initialMeetingId);
+    }
+  }, [initialMeetingId]);
+
+  if (project === undefined)
+    return <div className="pane-empty">불러오는 중…</div>;
+  if (project === null)
+    return (
+      <div className="pane-empty">
+        프로젝트를 찾을 수 없습니다. (삭제되었을 수 있음)
+      </div>
+    );
 
   return (
     <div className="project-view">
@@ -144,14 +171,18 @@ export default function ProjectView({ projectId }: { projectId: string }) {
         </div>
       )}
       {tab === "gantt" && <GanttTab projectId={projectId} />}
-      {tab === "meetings" && (
+      {/* 회의록·정보는 언마운트하지 않고 숨긴다 — 탭을 잠깐 오가도 작성/수정 중이던
+          내용이 파기되지 않게(리뷰). 간트는 자체 상태 소유 + 언마운트 시 flush 설계 유지. */}
+      <div style={{ display: tab === "meetings" ? undefined : "none" }}>
         <MeetingsPanel
           projectId={projectId}
           openId={openMeetingId}
           onOpened={() => setOpenMeetingId(null)}
         />
-      )}
-      {tab === "info" && <InfoTab project={project} />}
+      </div>
+      <div style={{ display: tab === "info" ? undefined : "none" }}>
+        <InfoTab project={project} />
+      </div>
     </div>
   );
 }

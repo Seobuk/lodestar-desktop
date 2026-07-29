@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "../lib/store";
 import { addNote, removeNote, updateNoteFields } from "../lib/mutations";
 import ConfirmButton from "./ConfirmButton";
@@ -33,6 +33,16 @@ function NoteEditor({
   const [newItem, setNewItem] = useState("");
   const items = parseJsonArr<ChecklistItem>(note.items);
   const dirty = title !== note.title || body !== note.body;
+
+  // pull이 서버 값을 갈아끼웠을 때: 편집 중(dirty)이 아니면 최신 값으로 리셋.
+  // (key에 updatedAt을 넣어 리마운트하면 타이핑 중 입력이 통째로 날아간다 — 금지)
+  useEffect(() => {
+    if (!dirty) {
+      setTitle(note.title);
+      setBody(note.body);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.updatedAt]);
 
   const saveItems = (next: ChecklistItem[]) =>
     void updateNoteFields(note.id, { items: next });
@@ -150,7 +160,7 @@ function NoteEditor({
   );
 }
 
-export default function PersonalNotes() {
+export default function PersonalNotes({ openId }: { openId?: string }) {
   const notes = useLiveQuery(
     (db) =>
       db.select<PersonalNoteRow[]>(
@@ -159,9 +169,12 @@ export default function PersonalNotes() {
     [],
   );
   const [showArchived, setShowArchived] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(openId ?? null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  useEffect(() => {
+    if (openId) setEditingId(openId);
+  }, [openId]);
 
   const visible = (notes ?? []).filter(
     (n) => Boolean(n.archived) === showArchived,
@@ -249,7 +262,7 @@ export default function PersonalNotes() {
       </div>
       {editing && (
         <NoteEditor
-          key={editing.id + String(editing.updatedAt)}
+          key={editing.id}
           note={editing}
           onClose={() => setEditingId(null)}
         />
