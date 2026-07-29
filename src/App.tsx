@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import ProjectView from "./components/ProjectView";
 import TaskView from "./components/TaskView";
+import PersonalView from "./components/PersonalView";
 import Settings from "./components/Settings";
 import { startAutoSync } from "./lib/sync";
 import type { Selection } from "./lib/types";
@@ -53,6 +54,7 @@ export default function App() {
             onSelect={setSelection}
           />
         )}
+        {selection?.type === "personal" && <PersonalView />}
         {!selection && <Empty onSettings={() => setSettingsOpen(true)} />}
       </main>
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}

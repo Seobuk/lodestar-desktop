@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLiveQuery, useVersion } from "../lib/store";
+import { getMeta } from "../lib/settings";
 import { listProjects, taskTree } from "../lib/queries";
 import { addProject, addTask, trashTask } from "../lib/mutations";
 import { scheduleSync, syncState, type SyncStatus } from "../lib/sync";
@@ -229,6 +230,10 @@ export default function Sidebar({
   onSettings: () => void;
 }) {
   const projects = useLiveQuery(listProjects, []);
+  const personalEnabled = useLiveQuery(
+    () => getMeta("personalEnabled").then((v) => v !== "0"),
+    [],
+  );
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
 
@@ -238,6 +243,15 @@ export default function Sidebar({
         Lodestar
       </button>
       <div className="side-scroll">
+        {personalEnabled !== false && (
+          <button
+            type="button"
+            className={`side-personal ${selection?.type === "personal" ? "active" : ""}`}
+            onClick={() => onSelect({ type: "personal" })}
+          >
+            👤 개인 페이지
+          </button>
+        )}
         {projects?.map((p) => (
           <SideProject
             key={p.id}

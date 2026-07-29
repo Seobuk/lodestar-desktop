@@ -59,6 +59,67 @@ const SCHEMA = [
     createdAt TEXT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`,
+  `CREATE TABLE IF NOT EXISTS personal_cards (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'todo',
+    checklist TEXT NOT NULL DEFAULT '[]',
+    color TEXT,
+    postit TEXT,
+    orderIndex REAL NOT NULL DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`,
+  `CREATE TABLE IF NOT EXISTS personal_notes (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    items TEXT NOT NULL DEFAULT '[]',
+    color TEXT NOT NULL DEFAULT 'default',
+    labels TEXT NOT NULL DEFAULT '[]',
+    pinned INTEGER NOT NULL DEFAULT 0,
+    archived INTEGER NOT NULL DEFAULT 0,
+    orderIndex INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`,
+  `CREATE TABLE IF NOT EXISTS personal_posts (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    pinned INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`,
+  `CREATE TABLE IF NOT EXISTS library_collections (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    parentId TEXT,
+    createdAt TEXT
+  )`,
+  `CREATE TABLE IF NOT EXISTS library_items (
+    id TEXT PRIMARY KEY,
+    collectionId TEXT,
+    itemType TEXT NOT NULL DEFAULT 'document',
+    title TEXT NOT NULL,
+    authors TEXT,
+    year INTEGER,
+    venue TEXT,
+    volume TEXT,
+    issue TEXT,
+    pages TEXT,
+    publisher TEXT,
+    doi TEXT,
+    url TEXT,
+    abstract TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
+    note TEXT,
+    fileUrl TEXT,
+    fileName TEXT,
+    deletedAt TEXT,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`,
 ];
 
 let dbPromise: Promise<Database> | null = null;
