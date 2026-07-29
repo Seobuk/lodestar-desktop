@@ -791,13 +791,28 @@ textarea {
   display: inline-flex;
   gap: 4px;
 }
+/* 3단 구성 — 컬렉션 | 목록 | 정보창(오른쪽 고정 폭) */
+.lib-detail-pane {
+  flex: 0 0 320px;
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+.lib-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
 .lib-detail {
-  margin-top: 12px;
+  margin-top: 0;
 }
 .lib-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 14px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 .lib-grid label {
   display: flex;

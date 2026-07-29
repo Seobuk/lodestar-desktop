@@ -279,8 +279,18 @@ export default function LibraryPanel() {
             </button>
           ))}
         </div>
-        {sel && <ItemDetail key={sel.id + String(sel.updatedAt)} item={sel} />}
       </div>
+      {sel && (
+        <aside className="lib-detail-pane">
+          <div className="lib-detail-head">
+            <b>항목 정보</b>
+            <button type="button" className="ghost" onClick={() => setSelId(null)}>
+              ✕
+            </button>
+          </div>
+          <ItemDetail key={sel.id + String(sel.updatedAt)} item={sel} />
+        </aside>
+      )}
     </div>
   );
 }

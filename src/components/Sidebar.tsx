@@ -20,7 +20,8 @@ function SideTask({
   selection: Selection | null;
   onSelect: (s: Selection) => void;
 }) {
-  const [open, setOpen] = useState(true);
+  // 한 단계씩 펼치기 — 기본 접힘(true로 두면 프로젝트를 열 때 전체 트리가 쏟아진다)
+  const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const active = selection?.type === "task" && selection.id === node.id;
