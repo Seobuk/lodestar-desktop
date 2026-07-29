@@ -1,0 +1,115 @@
+/* 커스텀 WBS 간트 스타일(업로드본 이식, .wbsg로 스코프). 변수는 .wbsg에 둔다. */
+.wbsg {
+  --wg-card: var(--panel, #fff);
+  /* 데스크톱 --bg는 흰색이라 웹처럼 var(--bg)를 쓰면 통계 칸이 카드에 묻힌다 */
+  --wg-bg: var(--side-bg, #f5f6f8);
+  --wg-ink: var(--ink, #1a1c20);
+  /* 앱이 이미 WCAG AA로 튜닝한 잉크 토큰을 승계 — 다크에서 고정 회색이 막대·라벨을
+     ~2.7:1로 만들던 문제 해소(연도 탭·범위·통계·에디터 라벨 전부 대상). */
+  --wg-ink2: var(--ink-dim, #5b6068);
+  --wg-ink3: var(--ink-faint, #8a9098);
+  --wg-line: var(--line, #e6e8ec);
+  --wg-line2: var(--line, #d6dae0);
+  --wg-today: #e0483f;
+  --wg-accent: var(--accent, #1a9e75);
+  --wg-danger: #d04545;
+  color: var(--wg-ink);
+  font-size: 14px;
+  /* my-gantt 카드 폴리시: 툴바·통계·차트를 하나의 패널로 묶는다 */
+  display: block;
+  background: var(--wg-card);
+  border: 1px solid var(--wg-line);
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 2px rgba(20,25,35,.04), 0 4px 16px rgba(20,25,35,.04);
+}
+
+.wbsg .wg-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 16px; }
+.wbsg .wg-tabs { display: flex; gap: 4px; background: var(--wg-bg); padding: 4px; border-radius: 10px; }
+.wbsg .wg-tab { padding: 6px 16px; border: none; background: transparent; border-radius: 7px; font: inherit; font-size: 13px; font-weight: 600; color: var(--wg-ink2); cursor: pointer; }
+.wbsg .wg-tab.on { background: var(--wg-card); color: var(--wg-ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+/* 이전/범위/다음/오늘을 한 덩어리로 묶어 모바일에서 낱개로 흩어지지 않게 */
+.wbsg .wg-nav { display: flex; align-items: center; gap: 6px; }
+.wbsg .wg-range { font-size: 13px; font-weight: 600; min-width: 130px; text-align: center; color: var(--wg-ink2); }
+/* 추가/펼치기/접기 액션 묶음 */
+.wbsg .wg-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.wbsg .wg-spacer { flex: 1; }
+.wbsg .wg-btn { padding: 6px 13px; border: 1px solid var(--wg-line2); background: var(--wg-card); border-radius: 8px; font: inherit; font-size: 13px; color: var(--wg-ink2); cursor: pointer; }
+.wbsg .wg-btn:hover { border-color: var(--wg-ink3); color: var(--wg-ink); }
+.wbsg .wg-btn.pri { background: var(--wg-accent); border-color: var(--wg-accent); color: var(--on-accent, #fff); }
+
+.wbsg .wg-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.wbsg .wg-stat { background: var(--wg-bg); border-radius: 12px; padding: 12px 16px; }
+.wbsg .wg-stat .lab { font-size: 12px; color: var(--wg-ink2); font-weight: 500; }
+.wbsg .wg-stat .val { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+.wbsg .wg-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
+.wbsg .wg-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--wg-line2); border-radius: 20px; font-size: 13px; color: var(--wg-ink); background: var(--wg-card); cursor: pointer; user-select: none; }
+.wbsg .wg-chip.off { opacity: .4; text-decoration: line-through; }
+.wbsg .wg-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px; }
+
+.wbsg .wg-gantt { border: 1px solid var(--wg-line); border-radius: 12px; overflow: hidden; position: relative; }
+.wbsg .wg-head { display: flex; border-bottom: 1px solid var(--wg-line); background: var(--wg-bg); }
+.wbsg .wg-glabel { width: 340px; flex: 0 0 340px; padding: 10px 14px; font-size: 12px; color: var(--wg-ink2); font-weight: 600; }
+.wbsg .wg-gtime { position: relative; flex: 1; }
+.wbsg .wg-gbody { position: relative; }
+.wbsg .wg-row { display: flex; border-bottom: 1px solid var(--wg-line); min-height: 38px; }
+.wbsg .wg-row:last-child { border-bottom: none; }
+.wbsg .wg-row:hover, .wbsg .wg-row.sel { background: var(--wg-bg); }
+.wbsg .wg-rlabel { width: 340px; flex: 0 0 340px; padding: 7px 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; }
+.wbsg .wg-chev { width: 16px; flex: 0 0 16px; color: var(--wg-ink3); font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.wbsg .wg-wbs { font-size: 11px; color: var(--wg-ink3); font-variant-numeric: tabular-nums; flex: 0 0 auto; font-weight: 500; }
+.wbsg .wg-nm { font-size: 13.5px; color: var(--wg-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wbsg .wg-co { font-size: 11px; color: var(--wg-ink3); margin-left: 2px; }
+.wbsg .wg-lv0 .wg-nm { font-weight: 700; }
+.wbsg .wg-lv1 .wg-nm { font-weight: 600; }
+.wbsg .wg-rtrack { position: relative; flex: 1; }
+.wbsg .wg-bar { position: absolute; cursor: pointer; overflow: hidden; }
+.wbsg .wg-bar:hover { outline: 2px solid var(--wg-ink3); outline-offset: 1px; }
+.wbsg .wg-leaf { top: 7px; height: 24px; border-radius: 7px; }
+.wbsg .wg-summ { top: 13px; height: 11px; border-radius: 3px; }
+.wbsg .wg-fill { height: 100%; }
+/* 마감(D-day) 다이아몬드 */
+.wbsg .wg-dia { position: absolute; top: 11px; width: 14px; height: 14px; background: #7c3aed; transform: rotate(45deg); border-radius: 2px; border: 1.5px solid var(--wg-card); box-shadow: 0 1px 3px rgba(0,0,0,.25); cursor: pointer; z-index: 5; }
+.wbsg .wg-dia:hover { filter: brightness(1.12); }
+
+/* 뷰포트 기준 고정 배치 → 간트 컨테이너 overflow:hidden에 안 잘림(위·아래 모두) */
+.wbsg .wg-tip { position: fixed; display: none; z-index: 100; pointer-events: none; background: var(--wg-ink); color: var(--wg-card); font-size: 12px; line-height: 1.5; padding: 8px 11px; border-radius: 8px; max-width: 260px; box-shadow: 0 6px 24px rgba(0,0,0,.18); }
+
+.wbsg .wg-detail { margin-top: 16px; padding: 16px 18px; border: 1px solid var(--wg-line); border-radius: 12px; background: var(--wg-bg); min-height: 60px; }
+.wbsg .wg-detail .empty { font-size: 13px; color: var(--wg-ink3); }
+.wbsg .wg-dhead { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.wbsg .wg-nameInput, .wbsg .wg-detail input[type="date"] { font: inherit; padding: 5px 9px; border: 1px solid var(--wg-line2); border-radius: 8px; background: var(--wg-card); color: var(--wg-ink); }
+.wbsg .wg-nameInput { font-size: 15px; font-weight: 700; min-width: 200px; }
+.wbsg .wg-ed { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-top: 12px; }
+.wbsg .wg-ed label { font-size: 12px; color: var(--wg-ink2); display: flex; flex-direction: column; gap: 5px; font-weight: 500; }
+.wbsg .wg-ed input[type="range"] { width: 160px; accent-color: var(--wg-accent); }
+.wbsg .wg-prw { display: flex; align-items: center; gap: 11px; }
+.wbsg .wg-prv { font-size: 14px; font-weight: 700; min-width: 42px; font-variant-numeric: tabular-nums; }
+.wbsg .wg-dur { font-size: 12px; color: var(--wg-ink3); }
+.wbsg .wg-pbar { height: 9px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
+.wbsg .wg-badge { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 20px; }
+.wbsg .wg-act { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.wbsg .wg-act button { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--wg-line2); background: var(--wg-card); color: var(--wg-ink); cursor: pointer; }
+.wbsg .wg-act button[disabled] { opacity: .35; cursor: not-allowed; }
+.wbsg .wg-act .add { background: var(--wg-accent); border-color: var(--wg-accent); color: var(--on-accent, #fff); }
+.wbsg .wg-act .add2 { border-color: var(--wg-accent); color: var(--wg-accent); }
+.wbsg .wg-act select { font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--wg-line2); border-radius: 8px; background: var(--wg-card); color: var(--wg-ink); cursor: pointer; max-width: 230px; }
+.wbsg .wg-act .del { color: var(--wg-danger); margin-left: auto; }
+.wbsg .wg-drow { display: flex; align-items: center; gap: 12px; padding: 7px 6px; border-top: 1px solid var(--wg-line); cursor: pointer; border-radius: 7px; }
+.wbsg .wg-drow:hover { background: var(--wg-card); }
+.wbsg .wg-pencil { background: none; border: none; color: var(--wg-ink3); cursor: pointer; padding: 3px; display: inline-flex; align-items: center; border-radius: 6px; }
+.wbsg .wg-pencil:hover { color: var(--wg-ink); background: var(--wg-card); }
+
+@media (max-width: 680px) {
+  .wbsg { padding: 16px 14px; border-radius: 14px; }
+  .wbsg .wg-glabel, .wbsg .wg-rlabel { width: 160px; flex-basis: 160px; }
+  .wbsg .wg-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  /* 툴바를 깔끔한 줄로: 탭·네비는 나란히, 범위는 남는 폭을 채우고, 액션은 아래 한 줄 */
+  .wbsg .wg-toolbar { gap: 8px; }
+  .wbsg .wg-spacer { display: none; }
+  .wbsg .wg-nav { flex: 1 1 auto; }
+  .wbsg .wg-range { flex: 1; min-width: 0; }
+  .wbsg .wg-actions { width: 100%; }
+  .wbsg .wg-actions .wg-btn { flex: 1 1 auto; text-align: center; }
+}

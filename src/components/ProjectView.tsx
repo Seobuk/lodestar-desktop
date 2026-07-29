@@ -5,6 +5,7 @@ import { updateProjectFields } from "../lib/mutations";
 import { fmtDateTime } from "../lib/format";
 import DeadlineList from "./DeadlineList";
 import MeetingsPanel from "./MeetingsPanel";
+import GanttTab from "./GanttTab";
 import Editor from "./Editor";
 import type { ProjectRow } from "../lib/types";
 
@@ -82,7 +83,7 @@ function InfoTab({ project }: { project: ProjectRow }) {
 export default function ProjectView({ projectId }: { projectId: string }) {
   const project = useLiveQuery((db) => getProjectRow(db, projectId), [projectId]);
   const meetings = useLiveQuery((db) => listMeetings(db, projectId), [projectId]);
-  const [tab, setTab] = useState<"dash" | "meetings" | "info">("dash");
+  const [tab, setTab] = useState<"dash" | "gantt" | "meetings" | "info">("dash");
   const [openMeetingId, setOpenMeetingId] = useState<string | null>(null);
 
   if (!project) return <div className="pane-empty">불러오는 중…</div>;
@@ -97,6 +98,7 @@ export default function ProjectView({ projectId }: { projectId: string }) {
         {(
           [
             ["dash", "대시보드"],
+            ["gantt", "간트"],
             ["meetings", "회의록"],
             ["info", "정보"],
           ] as const
@@ -141,6 +143,7 @@ export default function ProjectView({ projectId }: { projectId: string }) {
           </section>
         </div>
       )}
+      {tab === "gantt" && <GanttTab projectId={projectId} />}
       {tab === "meetings" && (
         <MeetingsPanel
           projectId={projectId}

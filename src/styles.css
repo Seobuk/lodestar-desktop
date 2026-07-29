@@ -499,6 +499,55 @@ textarea {
   border: none;
 }
 
+/* ----- 간트 삭제 확인 모달(wbs-gantt.ts가 쓰는 웹 공용 클래스) ----- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.modal-body {
+  font-size: 13px;
+  color: var(--ink-faint);
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.ibtn {
+  font: inherit;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 13px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--ink-faint);
+}
+.ibtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ibtn.danger {
+  color: var(--danger);
+}
+.ibtn.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ----- 설정 모달 ----- */
 .modal-overlay {
   position: fixed;

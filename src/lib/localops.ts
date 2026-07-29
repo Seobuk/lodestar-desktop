@@ -7,6 +7,23 @@ import type { SyncOp } from "./types";
 
 const nowIso = () => new Date().toISOString();
 
+type TreeNode = {
+  id?: string;
+  name?: string;
+  s?: string;
+  e?: string;
+  pr?: number;
+  children?: TreeNode[];
+};
+
+/** 업무 + 활성 하위 전체를 휴지통으로(재귀 CTE). task.trash와 task.tree가 공용. */
+const TRASH_SQL = `UPDATE tasks SET trashedAt = $2 WHERE trashedAt IS NULL AND id IN (
+  WITH RECURSIVE dset(id) AS (
+    SELECT $1
+    UNION ALL
+    SELECT t.id FROM tasks t JOIN dset ON t.parentId = dset.id
+  ) SELECT id FROM dset)`;
+
 export async function applyOpLocal(op: SyncOp): Promise<void> {
   const db = await getDb();
   const d = op.data ?? {};
@@ -64,16 +81,50 @@ export async function applyOpLocal(op: SyncOp): Promise<void> {
       ]);
       break;
     case "task.trash":
-      await db.execute(
-        `UPDATE tasks SET trashedAt = $2 WHERE trashedAt IS NULL AND id IN (
-           WITH RECURSIVE dset(id) AS (
-             SELECT $1
-             UNION ALL
-             SELECT t.id FROM tasks t JOIN dset ON t.parentId = dset.id
-           ) SELECT id FROM dset)`,
-        [op.id, nowIso()],
-      );
+      await db.execute(TRASH_SQL, [op.id, nowIso()]);
       break;
+    case "task.tree": {
+      // 간트 일괄 동기화의 로컬 적용 — 서버 syncProjectTasks의 근사.
+      // 데스크톱 래퍼가 모든 노드에 id를 미리 채워 보내므로 create도 id 그대로.
+      const projectId = String(d.projectId ?? "");
+      const tree = Array.isArray(d.tree) ? (d.tree as TreeNode[]) : [];
+      const deletedIds = Array.isArray(d.deletedIds)
+        ? (d.deletedIds as string[])
+        : [];
+      const now = nowIso();
+      for (const delId of deletedIds) await db.execute(TRASH_SQL, [delId, now]);
+      const walk = async (nodes: TreeNode[], parentId: string | null) => {
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          if (!node.id) continue;
+          const leaf = !node.children || node.children.length === 0;
+          const title = String(node.name ?? "").trim() || "새 항목";
+          const startDate = leaf && node.s ? node.s : null;
+          const endDate = leaf && node.e ? node.e : null;
+          const progress = leaf
+            ? Math.min(100, Math.max(0, Math.round(node.pr ?? 0)))
+            : 0;
+          const exists = await db.select<{ id: string }[]>(
+            "SELECT id FROM tasks WHERE id = $1",
+            [node.id],
+          );
+          if (exists.length) {
+            await db.execute(
+              "UPDATE tasks SET title = $2, parentId = $3, orderIndex = $4, startDate = $5, endDate = $6, progress = $7, durationDays = NULL, isMilestone = 0, updatedAt = $8 WHERE id = $1",
+              [node.id, title, parentId, i, startDate, endDate, progress, now],
+            );
+          } else {
+            await db.execute(
+              "INSERT INTO tasks (id, projectId, parentId, title, orderIndex, startDate, endDate, progress, createdAt, updatedAt) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)",
+              [node.id, projectId, parentId, title, i, startDate, endDate, progress, now],
+            );
+          }
+          if (node.children?.length) await walk(node.children, node.id);
+        }
+      };
+      await walk(tree, null);
+      break;
+    }
     case "task.restore": {
       const row = await db.select<{ trashedAt: string | null }[]>(
         "SELECT trashedAt FROM tasks WHERE id = $1",
@@ -84,11 +135,11 @@ export async function applyOpLocal(op: SyncOp): Promise<void> {
       // ponytail: 같은 배치 하위만 복원하는 근사 — 트래시 조상 복원은 서버 몫, pull이 교정
       await db.execute(
         `UPDATE tasks SET trashedAt = NULL WHERE id = $1 OR (trashedAt = $2 AND id IN (
-           WITH RECURSIVE dset(id) AS (
+           WITH RECURSIVE dset2(id) AS (
              SELECT $1
              UNION ALL
-             SELECT t.id FROM tasks t JOIN dset ON t.parentId = dset.id
-           ) SELECT id FROM dset))`,
+             SELECT t.id FROM tasks t JOIN dset2 ON t.parentId = dset2.id
+           ) SELECT id FROM dset2))`,
         [op.id, batch],
       );
       break;

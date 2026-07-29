@@ -162,12 +162,13 @@ type Snapshot = {
 };
 
 async function replaceAll(db: Database, snap: Snapshot): Promise<void> {
-  await db.execute("BEGIN");
-  try {
-    await db.execute("DELETE FROM projects");
-    await db.execute("DELETE FROM tasks");
-    await db.execute("DELETE FROM meetings");
-    await db.execute("DELETE FROM deadline_items");
+  // ⚠️ BEGIN/COMMIT 금지 — tauri plugin-sql은 연결 풀이라 BEGIN과 후속 쿼리가
+  // 다른 연결로 나가 DB가 잠긴다(앱 전체 멈춤, 실측). 교체가 원자적이지 않아도
+  // 로컬은 미러일 뿐이고 다음 pull이 다시 채우므로 무방하다.
+  await db.execute("DELETE FROM projects");
+  await db.execute("DELETE FROM tasks");
+  await db.execute("DELETE FROM meetings");
+  await db.execute("DELETE FROM deadline_items");
     for (const p of snap.projects)
       await db.execute(
         "INSERT INTO projects (id, name, description, deadline, status, orderIndex, createdAt, updatedAt) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
@@ -231,9 +232,4 @@ async function replaceAll(db: Database, snap: Snapshot): Promise<void> {
           dl.updatedAt ?? null,
         ],
       );
-    await db.execute("COMMIT");
-  } catch (e) {
-    await db.execute("ROLLBACK").catch(() => {});
-    throw e;
-  }
 }
