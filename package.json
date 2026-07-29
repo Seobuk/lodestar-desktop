@@ -1,0 +1,32 @@
+{
+  "name": "lodestar-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-http": "^2",
+    "@tauri-apps/plugin-sql": "^2",
+    "@vscode/markdown-it-katex": "^1",
+    "highlight.js": "^11",
+    "katex": "^0.16",
+    "markdown-it": "^14",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/markdown-it": "^14",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4",
+    "typescript": "^5",
+    "vite": "^6"
+  }
+}
