@@ -455,6 +455,21 @@ textarea {
   font-weight: 600;
 }
 
+/* ----- 업데이트(설정) ----- */
+.upd-section {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.upd-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+
 /* ----- 받아쓰기 모델 관리(설정) ----- */
 .stt-models {
   border-top: 1px solid var(--line);

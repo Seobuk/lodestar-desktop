@@ -5,6 +5,7 @@ import TaskView from "./components/TaskView";
 import PersonalView from "./components/PersonalView";
 import Settings from "./components/Settings";
 import { startAutoSync } from "./lib/sync";
+import { startUpdateChecks } from "./lib/updater";
 import type { Selection } from "./lib/types";
 
 function Empty({ onSettings }: { onSettings: () => void }) {
@@ -33,6 +34,7 @@ export default function App() {
 
   useEffect(() => {
     startAutoSync();
+    startUpdateChecks();
   }, []);
 
   return (

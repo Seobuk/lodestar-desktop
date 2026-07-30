@@ -4,17 +4,28 @@ import { scheduleSync, syncState } from "../lib/sync";
 import { useVersion } from "../lib/store";
 import { fmtDateTime } from "../lib/format";
 import SttModels from "./SttModels";
+import { getVersion } from "@tauri-apps/api/app";
+import {
+  autoUpdateEnabled,
+  checkForUpdate,
+  setAutoUpdate,
+  updateState,
+} from "../lib/updater";
 
 export default function Settings({ onClose }: { onClose: () => void }) {
   useVersion();
   const [url, setUrl] = useState(DEFAULT_SERVER);
   const [token, setToken] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState("");
+  const [autoUpd, setAutoUpd] = useState(true);
 
   useEffect(() => {
     void (async () => {
       setUrl((await getMeta("serverUrl")) || DEFAULT_SERVER);
       setToken((await getMeta("token")) || "");
+      setAutoUpd(await autoUpdateEnabled());
+      setAppVersion(await getVersion().catch(() => ""));
     })();
   }, []);
 
@@ -64,6 +75,36 @@ export default function Settings({ onClose }: { onClose: () => void }) {
               ))}
             </ul>
           )}
+        </div>
+        <div className="upd-section">
+          <div className="stt-models-head">업데이트</div>
+          <div className="upd-row">
+            <span>
+              현재 버전 v{appVersion || "?"}
+              {updateState.phase === "checking" && " · 확인 중…"}
+              {updateState.phase === "none" && " · 최신 버전입니다"}
+              {updateState.phase === "available" && ` · 새 버전 v${updateState.version}`}
+              {updateState.phase === "downloading" &&
+                ` · v${updateState.version} 다운로드 중 ${updateState.progress}%`}
+              {updateState.phase === "ready" &&
+                ` · v${updateState.version} 준비 완료(사이드바 배너에서 적용)`}
+              {updateState.phase === "error" && ` · 확인 실패: ${updateState.error}`}
+            </span>
+            <button type="button" onClick={() => void checkForUpdate(true)}>
+              업데이트 확인
+            </button>
+          </div>
+          <label className="pin-check">
+            <input
+              type="checkbox"
+              checked={autoUpd}
+              onChange={async (e) => {
+                setAutoUpd(e.target.checked);
+                await setAutoUpdate(e.target.checked);
+              }}
+            />
+            새 버전 자동 다운로드 (적용은 배너에서 클릭 — 앱이 다시 시작됩니다)
+          </label>
         </div>
         <SttModels />
         <div className="btn-row">

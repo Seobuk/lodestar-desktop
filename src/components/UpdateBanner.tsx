@@ -1,58 +1,35 @@
-import { useEffect, useState } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
+import { useVersion } from "../lib/store";
+import { applyUpdate, downloadUpdate, updateState } from "../lib/updater";
 
-// 자동 업데이트 — 시작 시 GitHub Releases의 latest.json을 확인하고, 새 버전이
-// 있으면 사이드바 상단에 배너를 띄운다. 설치는 사용자가 누를 때만(강제 없음).
+// 업데이트 배너 — 상태는 lib/updater가 소유(시작 시·4시간마다 자동 확인,
+// 자동 다운로드 설정에 따라 미리 받아 둠). 적용만 사용자가 누른다(재시작 수반).
 export default function UpdateBanner() {
-  const [update, setUpdate] = useState<Update | null>(null);
-  const [state, setState] = useState<"idle" | "downloading" | "ready" | "error">(
-    "idle",
-  );
+  useVersion();
+  const s = updateState;
 
-  useEffect(() => {
-    // 개발 모드·오프라인·릴리즈 없음 등은 조용히 무시
-    check()
-      .then((u) => {
-        if (u) setUpdate(u);
-      })
-      .catch(() => {});
-  }, []);
-
-  if (!update) return null;
-  return (
-    <div className="update-banner">
-      {state === "ready" ? (
-        <>
-          설치 완료 —{" "}
-          <button type="button" className="link" onClick={() => void relaunch()}>
-            다시 시작
-          </button>
-        </>
-      ) : state === "downloading" ? (
-        <>새 버전 설치 중…</>
-      ) : state === "error" ? (
-        <>업데이트 실패 — 다음에 다시 시도합니다.</>
-      ) : (
-        <>
-          새 버전 v{update.version}{" "}
-          <button
-            type="button"
-            className="link"
-            onClick={async () => {
-              setState("downloading");
-              try {
-                await update.downloadAndInstall();
-                setState("ready");
-              } catch {
-                setState("error");
-              }
-            }}
-          >
-            설치
-          </button>
-        </>
-      )}
-    </div>
-  );
+  if (s.phase === "available")
+    return (
+      <div className="update-banner">
+        새 버전 v{s.version}{" "}
+        <button type="button" className="link" onClick={() => void downloadUpdate()}>
+          다운로드
+        </button>
+      </div>
+    );
+  if (s.phase === "downloading")
+    return (
+      <div className="update-banner">
+        새 버전 v{s.version} 다운로드 중… {s.progress}%
+      </div>
+    );
+  if (s.phase === "ready")
+    return (
+      <div className="update-banner">
+        v{s.version} 준비 완료 —{" "}
+        <button type="button" className="link" onClick={() => void applyUpdate()}>
+          지금 적용 (다시 시작)
+        </button>
+      </div>
+    );
+  return null;
 }
