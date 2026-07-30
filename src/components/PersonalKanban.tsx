@@ -159,8 +159,14 @@ export default function PersonalKanban() {
         <div
           key={status}
           className="pk-col"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={() => void dropTo(status)}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            void dropTo(status);
+          }}
         >
           <div className="pk-col-head">
             {label}
@@ -180,7 +186,12 @@ export default function PersonalKanban() {
                     : undefined
                 }
                 draggable
-                onDragStart={() => setDragId(c.id)}
+                onDragStart={(e) => {
+                  // setData 없으면 일부 웹뷰에서 드래그가 시작조차 안 된다
+                  e.dataTransfer.setData("text/plain", c.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  setDragId(c.id);
+                }}
                 onDragEnd={() => setDragId(null)}
                 onClick={() => setEditingId(c.id)}
               >
