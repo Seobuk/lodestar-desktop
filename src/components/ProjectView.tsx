@@ -82,6 +82,11 @@ function InfoTab({ project }: { project: ProjectRow }) {
   );
 }
 
+type TabKey = "dash" | "gantt" | "meetings" | "info";
+
+// key={projectId} 리마운트로 탭이 초기화되지 않게 — 보던 탭을 프로젝트 전환 후에도 유지
+let lastTab: TabKey = "dash";
+
 export default function ProjectView({
   projectId,
   initialMeetingId,
@@ -92,9 +97,13 @@ export default function ProjectView({
 }) {
   const project = useLiveQuery((db) => getProjectRow(db, projectId), [projectId]);
   const meetings = useLiveQuery((db) => listMeetings(db, projectId), [projectId]);
-  const [tab, setTab] = useState<"dash" | "gantt" | "meetings" | "info">(
-    initialMeetingId ? "meetings" : "dash",
+  const [tab, rawSetTab] = useState<TabKey>(
+    initialMeetingId ? "meetings" : lastTab,
   );
+  const setTab = (t: TabKey) => {
+    lastTab = t;
+    rawSetTab(t);
+  };
   const [openMeetingId, setOpenMeetingId] = useState<string | null>(
     initialMeetingId ?? null,
   );
