@@ -830,6 +830,48 @@ textarea {
   font-size: 11px;
   color: var(--ink-faint);
 }
+.pk-card.dragging {
+  opacity: 0.35;
+}
+.pk-slot {
+  position: relative;
+}
+/* 삽입 표시선 — absolute라 레이아웃을 밀지 않음(카드가 밀리면 커서 밑
+   요소가 바뀌어 슬롯이 진동한다). 카드 사이 6px 마진 안에 그린다. */
+.pk-drop {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: -5px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.pk-drop.end {
+  top: auto;
+  bottom: -5px;
+}
+.pk-drop.empty {
+  position: static;
+  margin-bottom: 6px;
+}
+.ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+.ctx-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+.ctx-menu .swatches {
+  margin: 2px 0 8px;
+}
 .pk-new {
   width: 100%;
   border-style: dashed;
