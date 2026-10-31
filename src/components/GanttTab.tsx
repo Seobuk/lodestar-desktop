@@ -50,7 +50,7 @@ async function loadGanttData(projectId: string): Promise<GanttData> {
 // 재사용. 저장은 "로컬 DB 적용 + 오프라인 큐 적재"라 오프라인에서도 항상 성공.
 // 백그라운드 pull이 트리를 바꿨을 땐 편집 중(dirty)이 아니고 내용이 실제로
 // 달라졌을 때만 다시 로드한다 — 스테일 트리를 통째로 저장해 타인 편집을
-// 되돌리는 사고(리뷰)와, 30초마다 화면이 리셋되는 것 둘 다 피한다.
+// 되돌리는 사고(리뷰)와, pull마다 화면이 리셋되는 것 둘 다 피한다.
 export default function GanttTab({ projectId }: { projectId: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<GanttData | null>(null);

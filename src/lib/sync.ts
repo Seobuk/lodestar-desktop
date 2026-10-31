@@ -296,7 +296,6 @@ export function startAutoSync(): void {
     }
   });
   scheduleSync(0);
-  window.setInterval(() => scheduleSync(0), 30_000);
   window.addEventListener("online", () => scheduleSync(0));
 }
 
